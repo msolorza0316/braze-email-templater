@@ -3331,3 +3331,8 @@ document.getElementById('be-copy').addEventListener('click', async ()=>{
 
 document.getElementById('be-reset').addEventListener('click', ()=>location.reload());
 </script>
+<script>
+  window.onload = function() {
+    parent.postMessage(document.body.scrollHeight, "*");
+  };
+</script>
