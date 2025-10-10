@@ -5879,9 +5879,7 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
     return head;
   }
 
-  function buildExportHtml(bodyInner){
-    return '<!doctype html><html><head>' + buildHeadMinimal() + '</head><body>' + bodyInner + '</body></html>';
-  }
+  function buildExportHtml(bodyInner){  var headCSS = '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+                '<style id="be-style-fixes">.be-target-body a, .be-target-body a:visited{color:#1d53ff !important;} .be-target-body:focus,[contenteditable="true"]:focus{outline:none !important; box-shadow:none !important;}</style>';  return '<!doctype html><html><head>'+ headCSS +'</head><body>'+ bodyInner +'</body></html>';}
 
   function cloneForExport(){
     var preview = sel('#preview');
@@ -5906,7 +5904,7 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
   function openExport(){
     var bodyHtml = cloneForExport();
     if (!bodyHtml){ alert('Nothing to export'); return; }
-    codeEl.value = buildExportHtml(bodyHtml);
+    codeEl.value = buildExportHtml(bodyHtml).replace(/<\/script>/gi, '<\\/script>');
     modal.style.display = 'block';
   }
 
@@ -5961,13 +5959,7 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
     selAll('[data-editable]', root).forEach(function(n){ try { n.removeAttribute('data-editable'); } catch(e){} });
     selAll('script', root).forEach(function(s){ if (s && s.parentNode) s.parentNode.removeChild(s); });
   }
-  function buildExportHtml(bodyInner){
-    var styles = collectInlineStyles();
-    var head = '<meta charset="utf-8">\n'
-      + '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-      + (styles ? '<style>\n' + styles.replace(/<\/style>/gi,'</st'+'yle>') + '\n</style>\n' : '');
-    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n' + head + '</head>\n<body>\n' + bodyInner + '\n</body>\n</html>';
-  }
+  function buildExportHtml(bodyInner){  var headCSS = '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+                '<style id="be-style-fixes">.be-target-body a, .be-target-body a:visited{color:#1d53ff !important;} .be-target-body:focus,[contenteditable="true"]:focus{outline:none !important; box-shadow:none !important;}</style>';  return '<!doctype html><html><head>'+ headCSS +'</head><body>'+ bodyInner +'</body></html>';}
   function cloneForExport(){
     var preview = byId('preview'); if (!preview) return '';
     var clone = preview.cloneNode(true); clone.id = 'preview-export'; stripEditorArtifacts(clone);
@@ -5990,7 +5982,7 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
     if (!codeEl || !modal) return;
     var bodyHtml = cloneForExport();
     if (!bodyHtml){ alert('Nothing to export'); return; }
-    codeEl.textContent = buildExportHtml(bodyHtml);
+    codeEl.textContent = buildExportHtml(bodyHtml).replace(/<\/script>/gi, '<\\/script>');
     modal.style.display = 'block';
   }
   function closeExport(){ var modal  = byId('export-modal'); if (modal) modal.style.display = 'none'; }
