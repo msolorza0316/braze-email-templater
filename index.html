@@ -158,7 +158,29 @@ window.ensureMammoth = function(){
   });
 };
 </script><style>.be-target-body:focus{ outline:1px dashed #999 }</style><style>.be-target-body[contenteditable="true"]{display:block;}
-.be-target-body[contenteditable="true"]:focus{outline:1px dashed #999}</style></head>
+.be-target-body[contenteditable="true"]:focus{outline:1px dashed #999}</style>
+<style id="card-font-fix">
+/* Ensure all editor cards use the same font as intended (partner card already OK) */
+.be-target-body,
+.be-target-body * {
+  font-family: system-ui, Segoe UI, Helvetica, Arial, sans-serif !important;
+}
+</style>
+
+<style id="hoverguard-css">
+/* While interacting with the header, disable pointer events on the preview.
+   This prevents click-through without any JS. Adjust the selector if your
+   preview container has a different id than #preview. */
+.be-header:hover ~ #preview,
+.be-header:focus-within ~ #preview {
+  pointer-events: none !important;
+}
+/* Keep header controls from selecting text */
+.be-header, .be-header * {
+  user-select: none; -webkit-user-select: none;
+}
+</style>
+</head>
 <body class="font-roboto text-dark">
 <table cellpadding="0" cellspacing="0" class="nl-container card" contenteditable="false" role="presentation" width="100%">
 <tbody>
@@ -2365,7 +2387,6 @@ window.addSpacersToContent = window.addSpacersToContent || function(html){
   }
 };
 
-
 /* Import DOCX (marker-based)
   function addSpacersToContent(html){
     try{
@@ -2492,8 +2513,6 @@ function secondaryScaffold(innerHtml, idx){
     wrap.insertAdjacentElement('afterend', spacerTable);
   } catch(e){ /* no-op */ }
 }
-
-
 
   function partnerScaffold(headerText, innerHtml, idx){
     var headerTable =
@@ -4403,7 +4422,6 @@ window.addSpacersToContent = window.addSpacersToContent || function(html){
   }
 };
 
-
 /* Import DOCX (marker-based)
   function addSpacersToContent(html){
     try{
@@ -4530,8 +4548,6 @@ function secondaryScaffold(innerHtml, idx){
     wrap.insertAdjacentElement('afterend', spacerTable);
   } catch(e){ /* no-op */ }
 }
-
-
 
   function partnerScaffold(headerText, innerHtml, idx){
     var headerTable =
@@ -4754,11 +4770,7 @@ function secondaryScaffold(innerHtml, idx){
     return clone.innerHTML.trim();
   }
 
-  function buildExportHtml(bodyInner){
-    return '<!doctype html><html><head>' + buildHead() + '</head><body>' + bodyInner + '</body></html>';
-  }
-
-  function openExport(){
+  ){
     var modal = document.getElementById('export-modal');
     var code  = document.getElementById('export-code');
     if (!modal || !code) return;
@@ -5243,7 +5255,779 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
   window.onload = function() {
     parent.postMessage(document.body.scrollHeight, "*");
   };
-</script></body>
+</script>
+
+<script>
+(function(){
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initSelectionGuards, { once:true });
+  } else { initSelectionGuards(); }
+
+  function initSelectionGuards(){
+    var preview = document.getElementById('preview');
+    if (!preview) return;
+
+    // Ensure only editable bodies are focusable
+    preview.querySelectorAll('.be-block').forEach(function(host){
+      host.setAttribute('tabindex','-1'); // shell unfocusable
+      var body = host.querySelector('.be-target-body');
+      if (body){
+        if (!body.hasAttribute('tabindex')) body.setAttribute('tabindex','0'); // focus target
+        body.setAttribute('contenteditable','true');
+      }
+    });
+
+    // Route accidental clicks on shell/label/toolbar into the inner editable body
+    preview.addEventListener('mousedown', function(e){
+      var isEditable = e.target.closest('.be-target-body');
+      if (isEditable) return; // normal behavior
+      var host = e.target.closest('.be-block');
+      if (!host) return;
+      var body = host.querySelector('.be-target-body');
+      if (!body) return;
+      // Prevent selecting the shell
+      e.preventDefault();
+      // Focus the editable area instead
+      body.focus({ preventScroll: true });
+    }, true); // capture: true to pre-empt other handlers
+
+    // Also guard key focus (e.g., tabbing onto shell)
+    preview.addEventListener('focusin', function(e){
+      var host = e.target.closest && e.target.closest('.be-block');
+      if (host && !e.target.closest('.be-target-body')){
+        var body = host.querySelector('.be-target-body');
+        if (body){
+          body.focus({ preventScroll: true });
+        }
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  if (window.__docxImporterInit_v8) return;
+  window.__docxImporterInit_v8 = true;
+
+  function isHeaderLikeTable(tbl){
+    var sty = (tbl.getAttribute('style')||'').toLowerCase();
+    var text = (tbl.textContent||'').toLowerCase();
+    return (
+      /border-radius:\s*22px\s*22px\s*0\s*0/.test(sty) ||
+      /background(?:-color)?:\s*#1d53ff/.test(sty) ||
+      text.indexOf('from our partners') !== -1
+    );
+  }
+  function normalize(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init, { once:true });
+  } else { init(); }
+
+  function init(){
+    var preview = document.getElementById('preview');
+    if (!preview) return;
+
+    var fileInput = document.querySelector('input[type="file"]#docx-file');
+    if (!fileInput){
+      fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.id = 'docx-file';
+      fileInput.accept = '.docx';
+      fileInput.style.display = 'none';
+      document.body.appendChild(fileInput);
+    } else {
+      var fresh = fileInput.cloneNode(true);
+      fileInput.parentNode.replaceChild(fresh, fileInput);
+      fileInput = fresh;
+    }
+
+    var importBtn = document.getElementById('import-docx');
+    if (!importBtn){
+      importBtn = document.createElement('button');
+      importBtn.id = 'import-docx';
+      importBtn.type = 'button';
+      importBtn.style.display = 'none';
+      document.body.appendChild(importBtn);
+    } else {
+      try{ importBtn.onclick = null; }catch(e){}
+      var f2 = importBtn.cloneNode(true);
+      importBtn.parentNode.replaceChild(f2, importBtn);
+      importBtn = f2;
+    }
+
+    var choosing=false, running=false;
+    importBtn.addEventListener('click', function(ev){
+      ev.preventDefault(); ev.stopImmediatePropagation(); ev.stopPropagation();
+      if (choosing || running) return;
+      choosing = true;
+      fileInput.click();
+    }, true);
+
+    fileInput.addEventListener('change', function(ev){
+      ev.stopImmediatePropagation(); ev.stopPropagation();
+      if (running){ fileInput.value=''; choosing=false; return; }
+
+      var file = fileInput.files && fileInput.files[0];
+      if (!file){ choosing=false; return; }
+      if (!window.mammoth){ alert('DOCX parser not available.'); fileInput.value=''; choosing=false; return; }
+
+      running = true; importBtn.disabled = true; fileInput.disabled = true;
+
+      file.arrayBuffer().then(function(buf){
+        return window.mammoth.convertToHtml(
+          { arrayBuffer: buf },
+          {
+            styleMap: [
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh",
+              "p => p:fresh",
+              "rStyle[style-name='Superscript'] => sup",
+              "rStyle[style-name='Subscript']  => sub",
+              "u => u",
+              "strike => s"
+            ].join('\\n'),
+            includeEmbeddedStyleMap: true,
+            ignoreEmptyParagraphs: true,
+            convertImage: window.mammoth.images.imgElement(function(image){
+              return image.read('base64').then(function(src){
+                return { src: 'data:' + image.contentType + ';base64,' + src };
+              });
+            })
+          }
+        );
+      }).then(function(result){
+        var html = (result && result.value) || '';
+
+        var parser = new DOMParser();
+        var doc = parser.parseFromString('<div id="__stage__">'+ html +'</div>', 'text/html');
+        var stage = doc.getElementById('__stage__');
+        stage.querySelectorAll('script,style,noscript,link,meta,title,head').forEach(function(n){ n.remove(); });
+        var walker = doc.createTreeWalker(stage, NodeFilter.SHOW_COMMENT, null);
+        var cmts = []; while (walker.nextNode()) cmts.push(walker.currentNode); cmts.forEach(function(n){ n.remove(); });
+
+        function trimTop(html){
+          return html.replace(/^(?:\s|&nbsp;|<br\s*\/?>|<(?:p|div)>\s*<\/(?:p|div)>)+/i, '').trim();
+        }
+
+        var raw = stage.innerHTML;
+        var types = ['primary','secondary','partner','partner-header'];
+        var startRE = new RegExp("\\{\\{\\s*start-(" + types.join('|') + ")\\s*\\}\\}", "ig");
+        var endRE   = new RegExp("\\{\\{\\s*end-("   + types.join('|') + ")\\s*\\}\\}", "ig");
+
+        function extractByMarkers(sourceHtml){
+          var segments = [];
+          var m;
+          startRE.lastIndex = 0;
+          while ((m = startRE.exec(sourceHtml))){
+            var t = (m[1]||'').toLowerCase();
+            var contentStart = m.index + m[0].length;
+            endRE.lastIndex = contentStart;
+            var eMatch, endPos = -1;
+            while ((eMatch = endRE.exec(sourceHtml))){
+              if ((eMatch[1]||'').toLowerCase() === t){ endPos = eMatch.index; break; }
+            }
+            var content, nextIndex;
+            if (endPos === -1){
+              var nextStart = startRE.exec(sourceHtml);
+              var end = nextStart ? nextStart.index : sourceHtml.length;
+              content = sourceHtml.slice(contentStart, end);
+              nextIndex = end;
+            } else {
+              content = sourceHtml.slice(contentStart, endPos);
+              nextIndex = endRE.lastIndex;
+            }
+            content = content.replace(startRE, '').replace(endRE, '');
+            content = trimTop(content);
+            if (content.replace(/[\s\u00a0]+/g,'').length > 0){
+              segments.push({ type: t, html: content });
+            }
+            startRE.lastIndex = nextIndex;
+          }
+          return segments;
+        }
+
+        var segments = extractByMarkers(raw);
+
+        if (!segments.length){
+          var tds = Array.from(stage.querySelectorAll('table')).map(function(t){
+            var cells = Array.from(t.querySelectorAll('td'));
+            var best = cells.sort(function(a,b){ return (b.textContent||'').length - (a.textContent||'').length; })[0] || t;
+            return { type: null, html: trimTop(best.innerHTML.trim()) };
+          }).filter(function(o){ return o.html && o.html.replace(/[\s\u00a0]+/g,'').length>0; });
+          segments = tds;
+        }
+
+        if (!segments.length) throw new Error('No content found in the DOCX.');
+
+        function typeToLabel(t){
+          if (!t) return null;
+          if (t === 'primary') return 'Primary';
+          if (t === 'secondary') return 'Secondary';
+          if (t === 'partner' || t === 'partner-header') return 'Partner card';
+          return null;
+        }
+
+        function renderPartnerHeader(titleText){
+          function esc(s){ return s.replace(/&/g,'&amp;'); }
+          var inner = '<strong>' + esc(titleText || 'From Our Partners') + '</strong>';
+          return '' +
+          '<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0;mso-table-rspace:0;" width="100%">' +
+          '<tbody><tr><td align="center" style="">' +
+          '<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:685px;max-width:100%;background-color:#1d53ff;border:2px solid #232021;border-radius:22px 22px 0 0;" width="685">' +
+          '<tbody><tr><td style="padding:20px 25px 10px 25px;">' +
+          '<p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:1.2;color:#ffffff;">' + inner + '</p>' +
+          '</td></tr></tbody></table>' +
+          '</td></tr></tbody></table>';
+        }
+        function extractHeaderTitleText(fragmentHtml){
+          var d = new DOMParser().parseFromString('<div>'+ fragmentHtml +'</div>','text/html');
+          var txt = d.body.textContent || '';
+          txt = txt.replace(/\{\{[^}]*\}\}/g,'').trim();
+          return txt;
+        }
+
+        (function pairPartnerStrict(){
+          var pendingHeader = null, pendingTitle = null;
+          for (var i=0; i<segments.length; i++){
+            var seg = segments[i];
+            if (seg.type === 'partner-header'){
+              pendingHeader = seg.html;
+              pendingTitle  = extractHeaderTitleText(pendingHeader);
+              segments.splice(i,1);
+              i--;
+              continue;
+            }
+            if (pendingHeader && seg.type === 'partner'){
+              // Prepare partner body
+              var d = new DOMParser().parseFromString('<div>'+ seg.html +'</div>','text/html');
+              var root = d.body.firstElementChild || d.body;
+              var changed = false;
+
+              // Remove header-like tables at top
+              var child = root.firstElementChild;
+              while (child && child.tagName === 'TABLE' && isHeaderLikeTable(child)){
+                var rm = child; child = child.nextElementSibling; rm.remove(); changed = true;
+              }
+
+              // Remove any nodes before first table (to kill "between header and card" text)
+              var firstTable = root.querySelector('table');
+              if (firstTable){
+                var n = root.firstChild;
+                while (n && n !== firstTable){
+                  var next = n.nextSibling;
+                  root.removeChild(n);
+                  n = next;
+                  changed = true;
+                }
+              }
+
+              // Remove leading p/div matching title text
+              child = root.firstElementChild;
+              var titleNorm = normalize(pendingTitle);
+              while (child && /^(P|DIV)$/i.test(child.tagName)){
+                var childNorm = normalize(child.textContent);
+                if (titleNorm && childNorm === titleNorm){
+                  var rm2 = child; child = child.nextElementSibling; rm2.remove(); changed = true; continue;
+                }
+                break;
+              }
+
+              var cleaned = changed ? (root.innerHTML || '') : seg.html;
+
+              // Prepend header
+              var headerHTML = renderPartnerHeader(pendingTitle);
+              var wrap = new DOMParser().parseFromString('<div>'+ headerHTML + cleaned +'</div>', 'text/html');
+              var outRoot = wrap.body.firstElementChild || wrap.body;
+
+              // HARD STOP: remove any non-table nodes directly after the header table until next table
+              var first = outRoot.firstElementChild; // should be outer table wrapper of header
+              if (first && first.tagName === 'TABLE'){
+                var after = first.nextSibling;
+                while (after && !(after.nodeType === 1 && after.tagName === 'TABLE')){
+                  var nx = after.nextSibling;
+                  outRoot.removeChild(after);
+                  after = nx;
+                }
+              }
+
+              seg.html = outRoot.innerHTML;
+              pendingHeader = null; pendingTitle = null;
+            }
+          }
+          if (pendingHeader){
+            var headerHTML = renderPartnerHeader(extractHeaderTitleText(pendingHeader));
+            // No body => only header
+            segments.push({ type: 'partner', html: headerHTML });
+          }
+        })();
+
+        // Fill blocks (create extra as needed)
+        var bodies = Array.from(preview.querySelectorAll('.be-block .be-target-body'));
+        var shells = bodies.map(function(b){ return b.closest('.be-block'); });
+
+        function makeBlockShell(labelText, dataType){
+          var shell = document.createElement('div');
+          shell.className = 'be-block';
+          if (dataType) shell.dataset.type = (dataType === 'partner') ? 'partner-card' : dataType;
+          var label = '<div class="be-label"><span><span class="dot"></span> ' + (labelText || 'Imported') + '</span></div>';
+          var toolbar = '<div class="be-block-toolbar"><button class="be-ico be-handle" title="Drag">⋮⋮</button><button class="be-ico be-copy" title="Copy">Copy</button><button class="be-ico be-delete" title="Delete</button></div>';
+          var body = '<div class="be-target-body" contenteditable="true"></div>';
+          shell.innerHTML = label + toolbar + body;
+          return shell;
+        }
+
+        function typeToLabel(t){
+          if (!t) return null;
+          if (t === 'primary') return 'Primary';
+          if (t === 'secondary') return 'Secondary';
+          if (t === 'partner' || t === 'partner-header') return 'Partner card';
+          return null;
+        }
+
+        if (segments.length > bodies.length){
+          var toAdd = segments.length - bodies.length;
+          for (var i=0;i<toAdd;i++){
+            var seg = segments[bodies.length + i];
+            var labelText = typeToLabel(seg.type) || 'Imported';
+            var shell = makeBlockShell(labelText, seg.type);
+            preview.appendChild(shell);
+            bodies.push(shell.querySelector('.be-target-body'));
+            shells.push(shell);
+          }
+        }
+
+        var n = Math.min(bodies.length, segments.length);
+        for (var i=0;i<n;i++){
+          var seg = segments[i];
+          var body = bodies[i];
+          var shell = shells[i];
+          body.innerHTML = seg.html;
+          body.setAttribute('contenteditable','true');
+          if (seg.type){
+            shell.dataset.type = (seg.type === 'partner') ? 'partner-card' : seg.type;
+            var lbl = shell.querySelector('.be-label');
+            var ltxt = typeToLabel(seg.type);
+            if (lbl && ltxt){ lbl.innerHTML = '<span><span class="dot"></span> ' + ltxt + '</span>'; }
+        // Notify hooks that import fill completed
+        try { document.dispatchEvent(new CustomEvent('nb:afterImportFill')); } catch(e) {}
+          }
+        }
+
+      }).catch(function(err){
+        console.error(err);
+        alert('Import failed: ' + (err && err.message ? err.message : err));
+      }).finally(function(){
+        choosing=false; running=false; fileInput.value=''; importBtn.disabled=false; fileInput.disabled=false;
+      });
+    }, true);
+  }
+})();
+</script>
+
+<script>
+(function(){
+  function isEmptyNode(node){
+    if (!node) return false;
+    if (node.nodeType === 3) return !node.nodeValue || !node.nodeValue.trim();
+    if (node.nodeType === 1){
+      if (node.tagName === 'BR') return true;
+      if ((/^(P|DIV|PRE)$/).test(node.tagName) && !node.textContent.trim()) return true;
+    }
+    return false;
+  }
+  function trimLeading(parent){
+    while (isEmptyNode(parent.firstChild)){
+      parent.removeChild(parent.firstChild);
+    }
+  }
+  function compressBRs(parent){
+    var n = parent.firstChild, prevBR = false;
+    while (n){
+      var next = n.nextSibling;
+      if (n.nodeType === 1 && n.tagName === 'BR'){
+        if (prevBR){ parent.removeChild(n); }
+        else { prevBR = true; }
+      } else if (n.nodeType === 3 && !n.nodeValue.trim()){
+        parent.removeChild(n);
+      } else {
+        prevBR = false;
+      }
+      n = next;
+    }
+  }
+  function makeSpacerPre(){
+    var pre = document.createElement('pre');
+    pre.textContent = ""; // empty pre as spacer
+    // no styles: let email CSS handle spacing
+    return pre;
+  }
+  function firstIsStrongInline(body){
+    return body.firstElementChild && body.firstElementChild.tagName === 'STRONG';
+    }
+  function firstIsPWithStrong(body){
+    var el = body.firstElementChild;
+    return el && el.tagName === 'P' && el.firstElementChild && el.firstElementChild.tagName === 'STRONG';
+  }
+  function nextIsUL(node){
+    var next = node.nextElementSibling;
+    return next && next.tagName === 'UL';
+  }
+  function removeLeadingBRInside(el){
+    while (el && el.firstChild && el.firstChild.nodeType === 1 && el.firstChild.tagName === 'BR'){
+      el.removeChild(el.firstChild);
+    }
+  }
+
+  // Deep trailing BR removal: walk to the deepest last content container then strip trailing <br> and whitespace text nodes
+  function removeTrailingBRsDeep(root){
+    if (!root) return false;
+    // Find deepest container by following lastChild chain while element has children
+    var node = root;
+    var last = null;
+    // descend into last element/child repeatedly
+    while (node){
+      last = node;
+      if (node.lastElementChild){
+        node = node.lastElementChild;
+      } else if (node.lastChild && node.lastChild.nodeType === 3 && node.childNodes.length === 1){
+        break; // single text child
+      } else {
+        break;
+      }
+    }
+    // We want to operate on the container that actually holds the trailing nodes.
+    // If 'last' is a text node or <br>, step to its parent.
+    if (last && (last.nodeType === 3 || (last.nodeType === 1 && last.tagName === 'BR'))){
+      last = last.parentNode || root;
+    }
+    var changed = false;
+    var target = last || root;
+    // Remove trailing whitespace text nodes and <br> in this target, and also bubble one level up if it becomes empty
+    function stripTrailingIn(el){
+      var did = false;
+      var n = el.lastChild;
+      while (n && ((n.nodeType === 3 && !n.nodeValue.trim()) || (n.nodeType === 1 && n.tagName === 'BR'))){
+        var prev = n.previousSibling;
+        el.removeChild(n);
+        n = prev;
+        did = true;
+      }
+      return did;
+    }
+    // Try stripping in the deepest and up to two parent levels
+    var current = target;
+    for (var i=0;i<3 && current && current !== root.parentNode;i++){
+      if (stripTrailingIn(current)) changed = true;
+      // if container ends up empty and is a trivial wrapper (P/DIV/TD), move up
+      if (!current.lastChild && /^(P|DIV|TD|SPAN|SECTION|ARTICLE)$/i.test(current.tagName||"")){
+        current = current.parentNode;
+      } else {
+        break;
+      }
+    }
+    return changed;
+  }
+
+  function normalizeBody(body){
+    if (!body) return;
+    trimLeading(body);
+
+    // Spacer: only when first is bold and next isn't UL
+    if (firstIsStrongInline(body)){
+      var strong = body.firstElementChild;
+      removeLeadingBRInside(strong);
+      if (!nextIsUL(strong)){
+        var spacer = makeSpacerPre();
+        body.insertBefore(spacer, strong.nextSibling);
+      }
+    } else if (firstIsPWithStrong(body)){
+      var p = body.firstElementChild;
+      removeLeadingBRInside(p);
+      if (!nextIsUL(p)){
+        var spacer2 = makeSpacerPre();
+        body.insertBefore(spacer2, p.nextSibling);
+      }
+    }
+
+    // Partner-card trailing BR cleanup (deep)
+    var shell = body.closest && body.closest('.be-block');
+    if (shell && (shell.dataset.type === 'partner-card' || shell.getAttribute('data-type') === 'partner-card')){
+      // remove trailing BRs at body level
+      removeTrailingBRsDeep(body);
+      // also try inside any last TD within tables
+      var lastTD = body.querySelector('table td:last-child');
+      if (lastTD){
+        removeTrailingBRsDeep(lastTD);
+      }
+    }
+
+    // General: compress multiple <br> at root
+    compressBRs(body);
+  }
+
+  function run(){
+    var bodies = document.querySelectorAll('.be-block .be-target-body');
+    bodies.forEach(normalizeBody);
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      run();
+      document.addEventListener('nb:afterImportFill', run);
+    }, { once:true });
+  } else {
+    run();
+    document.addEventListener('nb:afterImportFill', run);
+  }
+})();
+</script>
+
+<script>
+(function(){
+  if (window.__beExportFixed) return;
+  window.__beExportFixed = true;
+
+  function sel(q,root){ return (root||document).querySelector(q); }
+  function selAll(q,root){ return Array.prototype.slice.call((root||document).querySelectorAll(q)); }
+
+  // Replace export button to drop old listeners
+  var btn = sel('#be-export');
+  if (btn){
+    var fresh = btn.cloneNode(true);
+    try{ btn.onclick = null; }catch(e){}
+    btn.parentNode.replaceChild(fresh, btn);
+    btn = fresh;
+  }
+
+  // Ensure modal skeleton exists
+  var modal = sel('#export-modal');
+  if (!modal){
+    modal = document.createElement('div');
+    modal.id = 'export-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:99999;';
+    modal.innerHTML = ''+
+      '<div style="background:#fff;max-width:960px;width:90%;margin:5vh auto;padding:16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<h3 style="margin:0;font-family:system-ui,Segoe UI,Helvetica,Arial,sans-serif;">Export HTML</h3>' +
+          '<button id="export-close" type="button" style="border:0;background:#eee;padding:6px 10px;border-radius:8px;cursor:pointer;">Close</button>' +
+        '</div>' +
+        '<textarea id="export-code" style="width:100%;height:60vh;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre;overflow:auto;"></textarea>' +
+        '<div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;">' +
+          '<button id="export-copy" type="button" style="border:0;background:#1d53ff;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;">Copy to clipboard</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+
+  var closeBtn = sel('#export-close', modal);
+  var codeEl   = sel('#export-code', modal);
+  var copyBtn  = sel('#export-copy', modal);
+
+  function stripEditorArtifacts(root){
+    // unwrap .be-target-body into its children
+    selAll('.be-target-body', root).forEach(function(b){
+      // remove spacer PREs that may be editor-only
+      selAll('pre:empty', b).forEach(function(p){ p.remove(); });
+      var frag = document.createDocumentFragment();
+      while (b.firstChild) frag.appendChild(b.firstChild);
+      b.replaceWith(frag);
+    });
+    // remove editor chrome
+    selAll('.be-block-toolbar, .be-label, .be-ico', root).forEach(function(n){ n.remove(); });
+    // remove empty wrappers
+    selAll('.be-block', root).forEach(function(n){
+      n.removeAttribute('contenteditable');
+      n.removeAttribute('tabindex');
+      n.removeAttribute('data-editable');
+      n.removeAttribute('data-type');
+      if (n.dataset) { try { delete n.dataset.type; } catch(e){} }
+      // replace block with its content
+      var body = sel('.be-target-body', n);
+      if (!body){
+        // already unwrapped above; flatten container if it only wraps content
+        var frag = document.createDocumentFragment();
+        while (n.firstChild) frag.appendChild(n.firstChild);
+        n.replaceWith(frag);
+      }
+    });
+    // strip editor classes starting with be-
+    selAll('[class]', root).forEach(function(el){
+      el.className = el.className.split(/\s+/).filter(function(c){ return !/^be-/.test(c); }).join(' ');
+      if (!el.className) el.removeAttribute('class');
+    });
+    // remove contenteditable & tabindex from all
+    selAll('[contenteditable]', root).forEach(function(el){ el.removeAttribute('contenteditable'); });
+    selAll('[tabindex]', root).forEach(function(el){ el.removeAttribute('tabindex'); });
+    // remove helper scripts/styles we injected
+    selAll('script, style', root).forEach(function(el){
+      // keep inline style attributes; remove style tags
+      if (el.tagName === 'STYLE' || (el.tagName === 'SCRIPT')) el.remove();
+    });
+    // remove empty text nodes at top level of exported root
+    return root;
+  }
+
+  function buildHeadMinimal(){
+    var head = '' +
+      '<meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<meta http-equiv="x-ua-compatible" content="ie=edge">' +
+      '<title>Export</title>';
+    return head;
+  }
+
+  function buildExportHtml(bodyInner){
+    return '<!doctype html><html><head>' + buildHeadMinimal() + '</head><body>' + bodyInner + '</body></html>';
+  }
+
+  function cloneForExport(){
+    var preview = sel('#preview');
+    if (!preview) return '';
+    var clone = preview.cloneNode(true);
+    clone.id = 'preview-export';
+    stripEditorArtifacts(clone);
+    // center presentation tables
+    selAll('table[role="presentation"], table.container', clone).forEach(function(tb){
+      tb.setAttribute('align','center');
+      var st = tb.getAttribute('style')||'';
+      if (!/margin-left:auto/.test(st)) st += (st?';':'') + 'margin-left:auto;margin-right:auto';
+      tb.setAttribute('style', st);
+    });
+    // trim
+    var html = clone.innerHTML.trim();
+    // remove stray empty paragraphs/pre/line breaks at very end of export
+    html = html.replace(/(?:<br\s*\/?>|\s|&nbsp;|<p>\s*<\/p>|<pre>\s*<\/pre>)+$/i, '');
+    return html;
+  }
+
+  function openExport(){
+    var bodyHtml = cloneForExport();
+    if (!bodyHtml){ alert('Nothing to export'); return; }
+    codeEl.value = buildExportHtml(bodyHtml);
+    modal.style.display = 'block';
+  }
+
+  function closeExport(){ modal.style.display = 'none'; }
+
+  if (btn){
+    btn.addEventListener('click', function(e){ e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); openExport(); }, true);
+  }
+  if (closeBtn){
+    closeBtn.addEventListener('click', function(){ closeExport(); });
+  }
+  if (copyBtn){
+    copyBtn.addEventListener('click', function(){
+      navigator.clipboard.writeText(codeEl.value).then(function(){});
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  if (window.__beExportBound) return; window.__beExportBound = true;
+  function byId(id){ return document.getElementById(id); }
+  function selAll(q, root){ return Array.prototype.slice.call((root||document).querySelectorAll(q)); }
+  (function ensureModal(){
+    var modal = byId('export-modal');
+    if (modal) return;
+    var tpl = document.createElement('div');
+    tpl.id = 'export-modal';
+    tpl.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;';
+    tpl.innerHTML =
+      '<div style="position:absolute;left:50%;top:10%;transform:translate(-50%,0);background:#fff;width:min(900px,90vw);max-height:80vh;overflow:auto;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:16px;">'
+    + '  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">'
+    + '    <div style="font:600 16px/1.2 system-ui,Segoe UI,Arial,sans-serif;">Export HTML</div>'
+    + '    <button id="export-close" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px;background:#f7f7f7;cursor:pointer;">Close</button>'
+    + '  </div>'
+    + '  <pre id="export-code" style="background:#111;color:#fff;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:56vh;overflow:auto;"></pre>'
+    + '  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">'
+    + '    <button id="export-copy" style="padding:8px 12px;border:1px solid #005bfb;border-radius:8px;background:#005bfb;color:#fff;cursor:pointer;">Copy email HTML</button>'
+    + '  </div>'
+    + '</div>';
+    (document.body || document.documentElement).appendChild(tpl);
+  })();
+  function collectInlineStyles(){
+    var css = []; selAll('style').forEach(function(st){ try { css.push(st.textContent || ''); } catch(e){} });
+    return css.join('\n\n');
+  }
+  function stripEditorArtifacts(root){
+    selAll('.main-header, .be-info, .be-header, #editor-actions, #be-toolbar, .be-clip', root).forEach(function(n){ if (n && n.parentNode) n.parentNode.removeChild(n); });
+    selAll('.be-label, .be-block-toolbar', root).forEach(function(n){ if (n && n.parentNode) n.parentNode.removeChild(n); });
+    selAll('[contenteditable]', root).forEach(function(n){ try { n.removeAttribute('contenteditable'); } catch(e){} });
+    selAll('[data-editable]', root).forEach(function(n){ try { n.removeAttribute('data-editable'); } catch(e){} });
+    selAll('script', root).forEach(function(s){ if (s && s.parentNode) s.parentNode.removeChild(s); });
+  }
+  function buildExportHtml(bodyInner){
+    var styles = collectInlineStyles();
+    var head = '<meta charset="utf-8">\n'
+      + '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+      + (styles ? '<style>\n' + styles.replace(/<\/style>/gi,'</st'+'yle>') + '\n</style>\n' : '');
+    return '<!DOCTYPE html>\n<html lang="en">\n<head>\n' + head + '</head>\n<body>\n' + bodyInner + '\n</body>\n</html>';
+  }
+  function cloneForExport(){
+    var preview = byId('preview'); if (!preview) return '';
+    var clone = preview.cloneNode(true); clone.id = 'preview-export'; stripEditorArtifacts(clone);
+    selAll('table[role="presentation"], table.container', clone).forEach(function(tb){
+      tb.setAttribute('align','center');
+      var st = tb.getAttribute('style') || '';
+      if (st.indexOf('margin-left:auto') === -1) st = (st ? st + ';' : '') + 'margin-left:auto;margin-right:auto';
+      tb.setAttribute('style', st);
+    });
+    var html = (clone.innerHTML || '').trim();
+    var trimmed = html;
+    for (var i=0;i<3;i++){
+      var tail = /(\s|&hairsp;|&#8202;|&#xfeff;|<div[^>]*>\s*<\/div>|<p[^>]*>\s*<\/p>|<pre[^>]*>\s*<\/pre>|<br\s*\/?>)\s*$/i;
+      if (tail.test(trimmed)){ trimmed = trimmed.replace(tail, ''); } else { break; }
+    }
+    return trimmed || html;
+  }
+  function openExport(){
+    var codeEl = byId('export-code'); var modal  = byId('export-modal');
+    if (!codeEl || !modal) return;
+    var bodyHtml = cloneForExport();
+    if (!bodyHtml){ alert('Nothing to export'); return; }
+    codeEl.textContent = buildExportHtml(bodyHtml);
+    modal.style.display = 'block';
+  }
+  function closeExport(){ var modal  = byId('export-modal'); if (modal) modal.style.display = 'none'; }
+  function bind(){
+    var btn = byId('be-export');
+    if (btn){
+      var clone = btn.cloneNode(true);
+      btn.parentNode.replaceChild(clone, btn);
+      btn = clone;
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation && ev.stopImmediatePropagation();
+        openExport();
+      }, false);
+    }
+    var closeBtn = byId('export-close'); if (closeBtn){ closeBtn.addEventListener('click', function(){ closeExport(); }, false); }
+    var copyBtn = byId('export-copy');
+    if (copyBtn){
+      copyBtn.addEventListener('click', function(){
+        var codeEl = byId('export-code'); var txt = codeEl ? codeEl.textContent : '';
+        if (!txt) return;
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(txt).catch(function(){});
+        } else {
+          try{
+            var blob = new Blob([txt], {type: 'text/html'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a'); a.href = url; a.download = 'email-export.html';
+            document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
+          }catch(e){}
+        }
+      }, false);
+    }
+  }
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', bind, { once:true }); } else { bind(); }
+})();
+</script>
+</body>
 </html>
 </div>
 <div class="be-clip">Preview stops here. Sections below remain in the copied HTML.</div>
