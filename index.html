@@ -243,7 +243,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -278,7 +278,7 @@ window.ensureMammoth = function(){
 </tr>
 </tbody>
 </table>
-<div class="spacer_block block-2" style="height:0;line-height:0;font-size:1px">&hairsp;</div>
+<div class="spacer_block block-2" style="height:0;line-height:0;font-size:1px"> </div>
 </td>
 </tr>
 </tbody>
@@ -292,7 +292,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -322,7 +322,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -362,7 +362,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -402,7 +402,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -442,7 +442,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -482,7 +482,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -518,7 +518,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -553,7 +553,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -583,7 +583,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -655,7 +655,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -691,7 +691,7 @@ window.ensureMammoth = function(){
 <tbody>
 <tr>
 <td style="padding:0;padding:0;padding:0;padding:0;padding:0;padding:0">
-<table cellspacing="0" cellpadding="0" class="container" role="presentation" width="685">
+<table cellpadding="0" cellspacing="0" class="container" role="presentation" width="685">
 <tbody>
 <tr>
 <td>
@@ -1849,7 +1849,6 @@ window.ensureMammoth = function(){
   document.addEventListener('click', onClick, true); // capture to beat editor handlers
 })();
 </script>
-
 <script>
 (function(){
   function ready(fn){ if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once:true }); else fn(); }
@@ -3768,7 +3767,7 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
   }
   if (copyBtn){
     copyBtn.addEventListener('click', function(){
-      navigator.clipboard.writeText(codeEl.value).then(function(){});
+      window.parent.postMessage({ type: "copyHTML", content: codeEl.value }, "*").then(function(){});
     });
   }
 })();
@@ -3868,7 +3867,6 @@ document.getElementById('be-reset').addEventListener('click', ()=>location.reloa
   if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', bind, { once:true }); } else { bind(); }
 })();
 </script>
-
 <script>
 (function(){
   function ready(fn){ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',fn,{once:true});} else { fn(); } }
@@ -4092,8 +4090,6 @@ function buildExportHtml(bodyInner){
 <button id="be-link">Link</button>
 <button id="be-clear">Clear</button>
 </div>
-
-
 <!-- PATCH: partner unify + marker support + missing function -->
 <script>
 (function(){
@@ -4235,7 +4231,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH v3: partner header editable + no duplicate headers -->
 <script>
 (function(){
@@ -4401,7 +4396,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH v4: preserve body when header-strip would empty it; robust fill -->
 <script>
 (function(){
@@ -4478,7 +4472,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH v5: DOCX importer override — marker-mapped fill for primary, secondary, partner -->
 <script>
 (function(){
@@ -4651,7 +4644,6 @@ function buildExportHtml(bodyInner){
   } else { setupOverride(); }
 })();
 </script>
-
 <!-- PATCH v6: header keeps emoji/formatting and is visibly editable -->
 <script>
 (function(){
@@ -4738,7 +4730,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(retrofitExisting, 0); });
 })();
 </script>
-
 <!-- PATCH v7: DOM-range extraction for partner header/body markers -->
 <script>
 (function(){
@@ -4827,7 +4818,6 @@ function buildExportHtml(bodyInner){
   })();
 })();
 </script>
-
 <!-- PATCH v8: remove extra leading breaks in partner header -->
 <script>
 (function(){
@@ -4880,7 +4870,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(fixExisting, 0); });
 })();
 </script>
-
 <!-- PATCH v9: remove header padding; no extra breakspace; keep editability -->
 <script>
 (function(){
@@ -4932,7 +4921,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(retrofitExisting, 0); });
 })();
 </script>
-
 <!-- PATCH v10: header editable via .be-target-body; zero padding; trim breaks -->
 <script>
 (function(){
@@ -4991,7 +4979,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(retrofit, 0); });
 })();
 </script>
-
 <!-- PATCH v10c: safe trim of leading <br>/whitespace in partner header; keep editability -->
 <script>
 (function(){
@@ -5065,7 +5052,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH: render {{ img-url }} ... {{ img-url-end }} as centered <img> in all cards -->
 <script>
 (function(){
@@ -5107,7 +5093,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH: Hardcode typography — body 16px, headers 20px -->
 <script>
 (function(){
@@ -5181,7 +5166,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(enforce, 0); });
 })();
 </script>
-
 <!-- PATCH: Force first headline to 20px inside primary/secondary card bodies -->
 <script>
 (function(){
@@ -5263,7 +5247,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH: Title heuristic — keep 16px for sentence-like first lines -->
 <script>
 (function(){
@@ -5383,7 +5366,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <!-- PATCH: enforce one 20px spacer before "Subscribe here" and remove extra gaps -->
 <script>
 (function(){
@@ -5509,7 +5491,6 @@ function buildExportHtml(bodyInner){
   document.addEventListener('nb:afterImportFill', function(){ setTimeout(run, 0); });
 })();
 </script>
-
 <script>
 (function(){
   if (window.__normalizeSpacerGap_v2) return;
