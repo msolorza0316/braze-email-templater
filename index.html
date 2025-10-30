@@ -179,6 +179,42 @@ window.ensureMammoth = function(){
   user-select: none; -webkit-user-select: none;
 }
 </style>
+
+
+
+
+<style id="bullet-and-strong-fix">
+/* Bullet spacing */
+.be-target-body ul, .be-target-body ol { margin: 0; padding-left: 20px; }
+.be-target-body li { line-height: 1.5 !important; margin: 0 0 12px 0 !important; }
+.be-target-body li:last-child { margin-bottom: 0 !important; }
+
+/* Baseline bold size */
+.be-target-body strong { font-size: 16px !important; }
+
+/* Promote ONLY the first element's starting <strong> */
+.be-target-body > :first-child > strong:first-child,
+.be-target-body > :first-child > span:first-child > strong:first-child,
+.be-target-body > :first-child > a:first-child > strong:first-child,
+.be-target-body > :first-child > em:first-child > strong:first-child,
+.be-target-body > :first-child > span:first-child > a:first-child > strong:first-child,
+.be-target-body > :first-child > a:first-child > span:first-child > strong:first-child
+{ font-size: 20px !important; line-height: 1.1 !important; }
+
+/* Demote any later block's leading <strong> */
+.be-target-body > :not(:first-child) > strong:first-child,
+.be-target-body > :not(:first-child) > span:first-child > strong:first-child,
+.be-target-body > :not(:first-child) > a:first-child > strong:first-child,
+.be-target-body > :not(:first-child) > em:first-child > strong:first-child
+{ font-size: 16px !important; }
+
+/* Neutralize legacy hdr20 wrappers */
+.be-target-body span[data-nb="hdr20"] { font-size: 16px !important; }
+
+/* Ensure first paragraph itself is never 20px */
+.be-target-body > p:first-of-type { font-size: 16px !important; }
+</style>
+
 </head>
 <body class="font-roboto text-dark">
 <table cellpadding="0" cellspacing="0" class="nl-container card" contenteditable="false" role="presentation" width="100%">
@@ -2769,6 +2805,76 @@ function secondaryScaffold(innerHtml, idx){
       tb.setAttribute('style', st);
     });
 
+    
+    // Inline font sizes for export per card (v3)
+    (function(){
+      var cards = clone.querySelectorAll('[data-editable="card"]');
+      cards.forEach(function(card){
+        function setPx(el, px){
+          var st = el.getAttribute('style') || '';
+          st = st.replace(/font-size\s*:\s*[^;]+;?/ig, '').trim();
+          el.setAttribute('style', (st ? st + ';' : '') + 'font-size:' + px + 'px!important;');
+        }
+        function has20px(el){
+          var st = el.getAttribute('style') || '';
+          return /font-size\s*:\s*20px/i.test(st);
+        }
+        // Partner: force 16 across the board
+        if (card.closest('[data-type="partner-card"]')){
+          card.querySelectorAll('*').forEach(function(el){ if (el.nodeType === 1) setPx(el,16); });
+          return;
+        }
+        // First meaningful block
+        function firstBlock(el){
+          var n = el.firstChild;
+          while(n){
+            if (n.nodeType === 1){
+              var tn = n.tagName.toLowerCase();
+              if (tn === 'br'){ n = n.nextSibling; continue; }
+              if (tn === 'p'){
+                var txt = n.textContent.replace(/\s+/g,'').trim();
+                if (!txt && !n.querySelector('img,svg')){ n = n.nextSibling; continue; }
+              }
+              return n;
+            } else if (n.nodeType === 3){
+              if (n.textContent.trim() === ''){ n = n.nextSibling; continue; }
+              return n;
+            } else { n = n.nextSibling; }
+          }
+          return null;
+        }
+        var fb = firstBlock(card);
+        var titleStrong = null;
+        if (fb && fb.querySelector){
+          var cand = Array.prototype.slice.call(fb.querySelectorAll('strong'));
+          cand.some(function(s){
+            var a = s.parentElement, ok = false;
+            while(a && a !== card){
+              var tn = a.tagName ? a.tagName.toLowerCase() : '';
+              if (/^h[1-6]$/.test(tn)){ ok = true; break; }
+              if ((a.getAttribute('data-nb')||'') === 'hdr20'){ ok = true; break; }
+              var cls = a.className || '';
+              if (/\bfs-20\b/.test(cls) || /\blh-100\b/.test(cls)) { ok = true; break; }
+              var st = a.getAttribute('style') || '';
+              if (/font-size\s*:\s*20px/i.test(st)) { ok = true; break; }
+              a = a.parentElement;
+            }
+            if (ok){ titleStrong = s; return true; }
+            return false;
+          });
+        }
+        // 1) Default all strong to 16
+        card.querySelectorAll('strong').forEach(function(s){ setPx(s,16); });
+        // 2) Promote only the title strong
+        if (titleStrong){ setPx(titleStrong,20); }
+        // 3) Demote any other element with inline 20px to 16px
+        card.querySelectorAll('[style*="font-size"]').forEach(function(el){
+          if (titleStrong && el === titleStrong) return;
+          if (has20px(el)) setPx(el,16);
+        });
+      });
+    })();
+    
     return clone.innerHTML.trim();
   }
 
@@ -3913,6 +4019,76 @@ function cloneForExport(){
       tb.setAttribute('style', st);
     });
 
+    
+    // Inline font sizes for export per card (v3)
+    (function(){
+      var cards = clone.querySelectorAll('[data-editable="card"]');
+      cards.forEach(function(card){
+        function setPx(el, px){
+          var st = el.getAttribute('style') || '';
+          st = st.replace(/font-size\s*:\s*[^;]+;?/ig, '').trim();
+          el.setAttribute('style', (st ? st + ';' : '') + 'font-size:' + px + 'px!important;');
+        }
+        function has20px(el){
+          var st = el.getAttribute('style') || '';
+          return /font-size\s*:\s*20px/i.test(st);
+        }
+        // Partner: force 16 across the board
+        if (card.closest('[data-type="partner-card"]')){
+          card.querySelectorAll('*').forEach(function(el){ if (el.nodeType === 1) setPx(el,16); });
+          return;
+        }
+        // First meaningful block
+        function firstBlock(el){
+          var n = el.firstChild;
+          while(n){
+            if (n.nodeType === 1){
+              var tn = n.tagName.toLowerCase();
+              if (tn === 'br'){ n = n.nextSibling; continue; }
+              if (tn === 'p'){
+                var txt = n.textContent.replace(/\s+/g,'').trim();
+                if (!txt && !n.querySelector('img,svg')){ n = n.nextSibling; continue; }
+              }
+              return n;
+            } else if (n.nodeType === 3){
+              if (n.textContent.trim() === ''){ n = n.nextSibling; continue; }
+              return n;
+            } else { n = n.nextSibling; }
+          }
+          return null;
+        }
+        var fb = firstBlock(card);
+        var titleStrong = null;
+        if (fb && fb.querySelector){
+          var cand = Array.prototype.slice.call(fb.querySelectorAll('strong'));
+          cand.some(function(s){
+            var a = s.parentElement, ok = false;
+            while(a && a !== card){
+              var tn = a.tagName ? a.tagName.toLowerCase() : '';
+              if (/^h[1-6]$/.test(tn)){ ok = true; break; }
+              if ((a.getAttribute('data-nb')||'') === 'hdr20'){ ok = true; break; }
+              var cls = a.className || '';
+              if (/\bfs-20\b/.test(cls) || /\blh-100\b/.test(cls)) { ok = true; break; }
+              var st = a.getAttribute('style') || '';
+              if (/font-size\s*:\s*20px/i.test(st)) { ok = true; break; }
+              a = a.parentElement;
+            }
+            if (ok){ titleStrong = s; return true; }
+            return false;
+          });
+        }
+        // 1) Default all strong to 16
+        card.querySelectorAll('strong').forEach(function(s){ setPx(s,16); });
+        // 2) Promote only the title strong
+        if (titleStrong){ setPx(titleStrong,20); }
+        // 3) Demote any other element with inline 20px to 16px
+        card.querySelectorAll('[style*="font-size"]').forEach(function(el){
+          if (titleStrong && el === titleStrong) return;
+          if (has20px(el)) setPx(el,16);
+        });
+      });
+    })();
+    
     return clone.innerHTML.trim();
   }
 
